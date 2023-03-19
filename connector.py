@@ -30,24 +30,28 @@ class Connector:
         если файл потерял актуальность в структуре данных
         """
         try:
-            with open(self.__data_file, "r") as f:
+            with open(self.__data_file, "r", encoding='utf-8') as f:
                 json.load(f)
         except FileNotFoundError:
             with open(self.__data_file, "w") as f:
                 json.dump([], f)
         except json.JSONDecodeError:
             raise Exception("Json файл поврежден")
+        finally:
+            f.close()
 
     def insert(self, data):
         """
         Запись данных в файл с сохранением структуры и исходных данных
         """
-        with open(self.__data_file, 'r') as f:
+        with open(self.__data_file, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
-        existing_data.append(data)
+            existing_data.append(data)
+            f.close()
 
-        with open(self.__data_file, 'w') as f:
-            json.dump(existing_data, f)
+        with open(self.__data_file, 'w', encoding='utf-8') as f:
+            json.dump(existing_data, f, ensure_ascii=False)
+            f.close()
 
     def select(self, query):
         """
@@ -57,9 +61,10 @@ class Connector:
         {'price': 1000}, должно отфильтровать данные по полю price
         и вернуть все строки, в которых цена 1000
         """
-        with open(self.__data_file, 'r') as f:
+        with open(self.__data_file, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
-        if not query:
+            f.close()
+        if not len(query):
             return existing_data
 
         data_from_file = []
@@ -75,10 +80,14 @@ class Connector:
         как в методе select. Если в query передан пустой словарь, то
         функция удаления не сработает
         """
-        with open(self.__data_file, 'r') as f:
+        if not len(query):
+            return
+        with open(self.__data_file, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
-        with open(self.__data_file, 'w') as f:
+            f.close()
+        with open(self.__data_file, 'w', encoding='utf-8') as f:
             existing_data = list(
                 filter(lambda item: not all(item[key] == value for key, value in query.items()), existing_data))
 
-            json.dump(existing_data, f, indent=2)
+            json.dump(existing_data, f, indent=2, ensure_ascii=False)
+            f.close()
