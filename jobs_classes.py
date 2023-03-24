@@ -1,19 +1,27 @@
-from engine_classes import *
-from utils import *
-from connector import *
-import requests
+import json
+from engine_classes import HH, SuperJob
+from utils import get_description_hh, get_description_sj, get_salary
 
 
 class Vacancy:
 
-    __slots__ = ['name', 'link', 'description', 'salary']
+    __slots__ = ['source', 'name', 'link', 'description', 'salary', 'city']
 
-    def __init__(self, name, link, description, salary):
+    def __init__(self, source, name, link, description, salary, city):
         self.name = name
         self.link = link
         self.description = description
         self.salary = salary
+        self.city = city
+        self.source = source
 
+    def __str__(self):
+        return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
+               f"\n--------------------\n{self.description}\nЗаработная плата {self.salary} руб/мес\nГород {self.city}"
+
+    def __repr__(self):
+        return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
+               f"\n--------------------\n{self.description}\nЗаработная плата {self.salary} руб/мес\nГород {self.city}"
 
     def __gt__(self, other):
         if not self.salary:
@@ -31,7 +39,7 @@ class Vacancy:
 
     def __iter__(self):
         self.index = 0
-        return
+        return self
 
     def __next__(self):
         if self.index < len(HHVacancy.hh_vacancies):
@@ -43,100 +51,111 @@ class Vacancy:
 
 
 class CountMixin:
-    counter = 0
+
+    def __init__(self):
+        self.data_file_json = None
+
     @property
     def get_count_of_vacancy(self):
         """
         Вернуть количество вакансий от текущего сервиса.
         Получать количество необходимо динамически из файла.
         """
-        return CountMixin.counter
+        with open(self.data_file_json, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return len(data)
 
-    @get_count_of_vacancy.setter
-    def get_count_of_vacancy(self, value):
-        CountMixin.counter = value
-class HHVacancy(Vacancy, CountMixin):  # add counter mixin
+
+class HHVacancy(Vacancy, CountMixin):
     """ HeadHunter Vacancy """
     hh_vacancies: list = []
-    data_file = 'hh_vacancy.json'
 
-    def __init__(self, name, link, description, salary):
-        super().__init__(name, link, description, salary)
-        self.data_file = HHVacancy.data_file
+    def __init__(self, source, name, link, description, salary, city):
+        super().__init__(source, name, link, description, salary, city)
+        self.data_file_json = 'hh_vacancy.json'
+        self.source = 'HeadHunter'
 
-    @classmethod
-    def get_file(cls, data_file):
-        with open(data_file, encoding='utf-8') as f:
-            data = json.load(f)
-            for obj in data:
-                for item in obj:
-                    name = item.get('name')
-                    link = item.get('url')
-                    description = get_description_hh(item)
-                    try:
-                        if item.get('salary').get('currency') == 'USD':
-                            salary = round(item.get('salary').get('from') * 76.96), \
-                                    round(item.get('salary').get('to') * 76.96)
-                        elif item.get('salary').get('currency') == 'EUR':
-                            salary = round(item.get('salary').get('from') * 81.11),  \
-                                    round(item.get('salary').get('to') * 81.11)
-                        else:
-                            salary = item.get('salary').get('from'), item.get('salary').get('to')
-                    except (AttributeError, TypeError):
-                        salary = 0
-                dict_vacancies = {
-                    'name': name,
-                    'link': link,
-                    'description': description,
-                    'salary': salary
-                    }
-                cls.hh_vacancies.append(HHVacancy(**dict_vacancies))
+    def get_vacancies_hh(self, text, count_pages=5):
+        hh = HH(text)
+        for i in range(1, count_pages + 1):
+            hh.params['page'] = i
+            data = hh.get_request()
+            for item in data.get('items'):
+                self.name = item.get('name')
+                self.link = item.get('alternate_url')
+                self.description = get_description_hh(item)
+                try:
+                    if item.get('salary').get('currency') == 'USD':
+                        self.salary = [round(item.get('salary').get('from') * 76.96),
+                                       round(item.get('salary').get('to') * 76.96)]
+                    elif item.get('salary').get('currency') == 'EUR':
+                        self.salary = [round(item.get('salary').get('from') * 81.11),
+                                       round(item.get('salary').get('to') * 81.11)]
+                    else:
+                        self.salary = [item.get('salary').get('from'), item.get('salary').get('to')]
+                except (AttributeError, TypeError):
+                    self.salary = 0
+                self.city = item.get('area').get('name')
+
+                HHVacancy.hh_vacancies.append({'source': self.source, 'name': self.name,
+                                               'link': self.link, 'description': self.description,
+                                               'salary': get_salary(self.salary), 'city': self.city})
+
+                if len(HHVacancy.hh_vacancies) >= 500:
+                    break
+
+        connector = HH.get_connector(self.data_file_json)
+        connector.insert(HHVacancy.hh_vacancies)
+        return connector.data_file
 
     def __str__(self):
-        return f"\n************\nСервис -----HeadHunter-----\nВакансия: {self.name} - ({self.link})" \
-               f"\n--------------------\n{self.description}\nЗаработная плата {self.salary} руб/мес"
+        return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
+               f"\n--------------------\n{self.description}\nЗаработная плата {self.salary} руб/мес\nГород {self.city}"
+
+    def __repr__(self):
+        return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
+               f"\n--------------------\n{self.description}\nЗаработная плата {self.salary} руб/мес\nГород {self.city}"
 
 
-class SJVacancy(Vacancy):  # add counter mixin
+class SJVacancy(Vacancy, CountMixin):
     """ SuperJob Vacancy """
     sj_vacancies: list = []
-    data_file = 'sj_vacancy.json'
 
-    def __init__(self, name, link, description, salary):
-        super().__init__(name, link, description, salary)
-        self.data_file = SJVacancy.data_file
+    def __init__(self, source, name, link, description, salary, city):
+        super().__init__(source, name, link, description, salary, city)
+        self.data_file_json = 'sj_vacancy.json'
+        self.source = 'Superjob'
 
-    @classmethod
-    def get_file(cls, data_file):
-        with open(data_file) as f:
-            data = json.load(f)
-            for obj in data:
-                for item in obj:
-                    name = item.get('profession')
-                    link = item.get('link')
-                    description = get_description_sj(item)
-                    try:
-                        salary = item.get('payment_from')
-                    except (AttributeError, TypeError):
-                        salary = 0
+    def get_vacancies_sj(self, text, count_pages=5):
+        sj = SuperJob(text)
+        for i in range(1, count_pages + 1):
+            sj.params['page'] = i
+            data = sj.get_request()
+            for item in data.get('objects'):
+                self.name = item.get('profession')
+                self.link = item.get('link')
+                self.description = get_description_sj(item)
+                try:
+                    self.salary = [item.get("payment_from"), item.get("payment_to")]
+                except (AttributeError, TypeError):
+                    self.salary = 0
+                self.city = item.get('town').get('title')
 
-                    cls.sj_vacancies.append(HHVacancy(name, link, description, salary))
+                SJVacancy.sj_vacancies.append(
+                    {'source': self.source, 'name': self.name, 'link': self.link, 'description': self.description,
+                     'salary': get_salary(self.salary), 'city': self.city})
+
+                if len(SJVacancy.sj_vacancies) >= 500:
+                    break
+
+        connector = SuperJob.get_connector(self.data_file_json)
+        connector.insert(SJVacancy.sj_vacancies)
+        return connector.data_file
 
     def __str__(self):
-        return f'SJ: {self.name}, зарплата: {self.salary} руб/мес'
+        return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
+               f"\n--------------------\n{self.description}\nЗаработная плата {self.salary} руб/мес\nГород {self.city}"
 
-
-def sorting(vacancies):
-    """ Должен сортировать любой список вакансий по ежемесячной оплате (gt, lt magic methods) """
-    sorted_by_salary = sorted(vacancies, reverse=True)
-    return sorted_by_salary
-
-
-def get_top(vacancies, top_count):
-    """ Должен возвращать {top_count} записей из вакансий по зарплате (iter, next magic methods) """
-    try:
-        for i in range(top_count):
-            print(vacancies[i])
-    except IndexError:
-        print(f'Нет {top_count} записей вакансий')
-
+    def __repr__(self):
+        return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
+               f"\n--------------------\n{self.description}\nЗаработная плата {self.salary} руб/мес\nГород {self.city}"
