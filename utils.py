@@ -10,21 +10,6 @@ def get_description_hh(data: dict) -> str:
     return description.replace('<highlighttext>', '').replace('</highlighttext>', '')
 
 
-def get_salary_hh(salary: dict) -> int | str:
-    """
-    Возвращает отформантированную заработную плату вакансии из HH
-    """
-    if salary["salary"] is None or salary["salary"]["from"] is None:
-        return 'не указана'
-    else:
-        salary_from = f'от {salary["salary"]["from"]}'
-    if salary["salary"] is None or salary["salary"]["to"] is None:
-        return 'не указана'
-    else:
-        salary_to = f' до {salary["salary"]["to"]}'
-    return f'{salary_from}{salary_to}({salary["salary"]["currency"]})'
-
-
 def get_description_sj(data: dict) -> str:
     """
     Возвращает отформантированное описание вакансии из SJ
@@ -38,16 +23,49 @@ def get_description_sj(data: dict) -> str:
     return description
 
 
-def get_salary_sj(salary: dict) -> int | str:
+def get_salary(salary):
     """
-    Возвращает отформантированную заработную плату вакансии из SJ
+    Возвращает отформантированную заработную плату
     """
-    if salary["payment_from"] is None:
-        return 'не указана'
-    else:
-        salary_from = f'от {salary["payment_from"]}'
-    if salary["payment_to"] is None:
-        return 'не указана'
-    else:
-        salary_to = f' до {salary["payment_to"]}'
-    return f'{salary_from}{salary_to}({salary["currency"]})'
+    if salary:
+        if salary[0] and salary[1]:
+            return f"{salary[0]}-{salary[1]}руб"
+        elif salary[0]:
+            return f"от {salary[0]}руб"
+        elif salary[1]:
+            return f"до {salary[1]}руб"
+    return 0
+
+
+def collect_jobs(class_source):
+    vacancy = class_source(source=None, name=None, link=None, description=None, salary=None, city=None)
+    return vacancy
+
+
+def sorting(vacancies):
+    """ Должен сортировать любой список вакансий по ежемесячной оплате (gt, lt magic methods) """
+    def extract_salary(vacancy):
+        salary_range = str(vacancy['salary'])
+        if '-' in salary_range:
+            salary_range = salary_range.split('-')
+            salary_num = max((int(salary_range[0].replace('руб', '').replace(' ', '')),
+                              int(salary_range[1].replace('руб', '').replace(' ', ''))))
+        elif 'от' in salary_range:
+            salary_num = int(salary_range.replace('от ', '').replace('руб', '').replace(' ', ''))
+        else:
+            salary_num = int(salary_range.replace('до ', '').replace('руб', '').replace(' ', ''))
+        return salary_num
+
+    sorted_vacancies = sorted(vacancies, key=extract_salary, reverse=True)
+    return sorted_vacancies
+
+
+def get_top(vacancies, top_count):
+    """ Должен возвращать {top_count} записей из вакансий по зарплате (iter, next magic methods) """
+    try:
+        for i in range(top_count):
+            print(vacancies[i])
+    except IndexError:
+        print(f'Нет {top_count} записей вакансий')
+
+
