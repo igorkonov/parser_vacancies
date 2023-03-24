@@ -9,10 +9,6 @@ class Connector:
     """
     __data_file = None
 
-    def __init__(self, file_path):
-        self.__data_file = file_path
-        self.__connect()
-
     @property
     def data_file(self):
         return self.__data_file
@@ -33,25 +29,18 @@ class Connector:
             with open(self.__data_file, "r", encoding='utf-8') as f:
                 json.load(f)
         except FileNotFoundError:
-            with open(self.__data_file, "w") as f:
-                json.dump([], f)
+            with open(self.__data_file, "w", encoding='utf-8') as f:
+                json.dump([], f,)
         except json.JSONDecodeError:
             raise Exception("Json файл поврежден")
-        finally:
-            f.close()
 
     def insert(self, data):
         """
         Запись данных в файл с сохранением структуры и исходных данных
         """
-        with open(self.__data_file, 'r', encoding='utf-8') as f:
-            existing_data = json.load(f)
-            existing_data.append(data)
-            f.close()
-
-        with open(self.__data_file, 'w', encoding='utf-8') as f:
-            json.dump(existing_data, f, ensure_ascii=False)
-            f.close()
+        data = json.dumps(data, indent=2, ensure_ascii=False)
+        with open(self.__data_file, "w", encoding='utf-8') as f:
+            f.write(data)
 
     def select(self, query):
         """
