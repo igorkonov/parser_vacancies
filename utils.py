@@ -23,7 +23,7 @@ def get_description_sj(data: dict) -> str:
     return description
 
 
-def get_salary(salary):
+def get_salary(salary) -> str:
     """
     Возвращает отформантированную заработную плату
     """
@@ -34,18 +34,19 @@ def get_salary(salary):
             return f"от {salary[0]}руб"
         elif salary[1]:
             return f"до {salary[1]}руб"
-    return 0
+    return salary
 
 
 def collect_jobs(class_source):
-    vacancy = class_source(source=None, name=None, link=None, description=None, salary=None, city=None)
+    """Создает экземпляр класса"""
+    vacancy = class_source()
     return vacancy
 
 
-def sorting(vacancies):
+def sorting(vacancies: list) -> list:
     """ Должен сортировать любой список вакансий по ежемесячной оплате (gt, lt magic methods) """
     def extract_salary(vacancy):
-        salary_range = str(vacancy['salary'])
+        salary_range = str(vacancy.salary)
         if '-' in salary_range:
             salary_range = salary_range.split('-')
             salary_num = max((int(salary_range[0].replace('руб', '').replace(' ', '')),
@@ -60,12 +61,10 @@ def sorting(vacancies):
     return sorted_vacancies
 
 
-def get_top(vacancies, top_count):
+def get_top(vacancies: list, top_count: int):
     """ Должен возвращать {top_count} записей из вакансий по зарплате (iter, next magic methods) """
     try:
         for i in range(top_count):
             print(vacancies[i])
     except IndexError:
         print(f'Нет {top_count} записей вакансий')
-
-
