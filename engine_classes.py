@@ -5,8 +5,11 @@ from connector import Connector
 
 
 class Engine(ABC):
+    """Абстрактный класс Enngine для сбора информации через API
+    в json файл и передача его в Класс Connector"""
     @abstractmethod
     def get_request(self, url: str, params: dict, headers: dict):
+        """Запрос через API"""
         resp = requests.get(url=url, params=params, headers=headers)
         return resp.json()
 
@@ -19,6 +22,7 @@ class Engine(ABC):
 
 
 class HH(Engine):
+    """Класс НН наследуемый от класса Engine"""
     def __init__(self, text: str):
         self.text = text
         self.params = {'text': self.text, 'per_page': 100, 'page': 0, 'area': 113}
@@ -31,6 +35,7 @@ class HH(Engine):
 
 
 class SuperJob(Engine):
+    """Класс SuperJob наследуемый от класса Engine"""
 
     def __init__(self, keyword: str):
         self.keyword = keyword
