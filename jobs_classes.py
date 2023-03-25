@@ -4,8 +4,9 @@ from utils import get_description_hh, get_description_sj, get_salary
 
 
 class Vacancy:
+    """Базовый класс Vacansy"""
 
-    __slots__ = ['source', 'name', 'link', 'description', 'salary', 'city']
+    __slots__ = ['index', 'source', 'name', 'link', 'description', 'salary', 'city']
 
     def __init__(self, source, name, link, description, salary, city):
         self.name = name
@@ -14,6 +15,7 @@ class Vacancy:
         self.salary = salary
         self.city = city
         self.source = source
+        self.index = 0
 
     def __str__(self):
         return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
@@ -51,6 +53,8 @@ class Vacancy:
 
 
 class CountMixin:
+    """Класс миксин, для сбора данных из файла
+    для вывода количества вакансий"""
 
     def __init__(self):
         self.data_file_json = None
@@ -66,16 +70,22 @@ class CountMixin:
             return len(data)
 
 
-class HHVacancy(Vacancy, CountMixin):
-    """ HeadHunter Vacancy """
+class HHVacancy(CountMixin):
+    """ HeadHunter вакансии """
     hh_vacancies: list = []
 
-    def __init__(self, source, name, link, description, salary, city):
-        super().__init__(source, name, link, description, salary, city)
+    def __init__(self):
+        super().__init__()
+        self.city = None
+        self.salary = None
+        self.description = None
+        self.link = None
+        self.name = None
         self.data_file_json = 'hh_vacancy.json'
         self.source = 'HeadHunter'
 
     def get_vacancies_hh(self, text, count_pages=5):
+        """Сбор вакансий из сайта НН и записываем в Connector"""
         hh = HH(text)
         for i in range(1, count_pages + 1):
             hh.params['page'] = i
@@ -106,7 +116,16 @@ class HHVacancy(Vacancy, CountMixin):
 
         connector = HH.get_connector(self.data_file_json)
         connector.insert(HHVacancy.hh_vacancies)
-        return connector.data_file
+        return connector
+
+    @staticmethod
+    def get_vacancies_hh_from_file(connector) -> list[Vacancy]:
+        """Фильтруем данные в новый список вакансий"""
+        vacancies = connector.select()
+        new_vacancies = []
+        for vac in vacancies:
+            new_vacancies.append(Vacancy(**vac))
+        return new_vacancies
 
     def __str__(self):
         return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
@@ -117,16 +136,22 @@ class HHVacancy(Vacancy, CountMixin):
                f"\n--------------------\n{self.description}\nЗаработная плата {self.salary} руб/мес\nГород {self.city}"
 
 
-class SJVacancy(Vacancy, CountMixin):
-    """ SuperJob Vacancy """
+class SJVacancy(CountMixin):
+    """ SuperJob вакансии """
     sj_vacancies: list = []
 
-    def __init__(self, source, name, link, description, salary, city):
-        super().__init__(source, name, link, description, salary, city)
+    def __init__(self):
+        super().__init__()
+        self.city = None
+        self.salary = None
+        self.description = None
+        self.link = None
+        self.name = None
         self.data_file_json = 'sj_vacancy.json'
         self.source = 'Superjob'
 
-    def get_vacancies_sj(self, text, count_pages=5):
+    def get_vacancies_sj(self, text: str, count_pages=5):
+        """Сбор вакансий из сайта НН и записываем в Connector"""
         sj = SuperJob(text)
         for i in range(1, count_pages + 1):
             sj.params['page'] = i
@@ -150,7 +175,16 @@ class SJVacancy(Vacancy, CountMixin):
 
         connector = SuperJob.get_connector(self.data_file_json)
         connector.insert(SJVacancy.sj_vacancies)
-        return connector.data_file
+        return connector
+
+    @staticmethod
+    def get_vacancies_sj_from_file(connector) -> list[Vacancy]:
+        """Фильтруем данные в новый список вакансий"""
+        vacancies = connector.select()
+        new_vacancies = []
+        for vac in vacancies:
+            new_vacancies.append(Vacancy(**vac))
+        return new_vacancies
 
     def __str__(self):
         return f"\n************\nСервис -----{self.source}-----\nВакансия: {self.name} - ({self.link})" \
