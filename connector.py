@@ -42,7 +42,7 @@ class Connector:
         with open(self.__data_file, "w", encoding='utf-8') as f:
             f.write(data)
 
-    def select(self, query):
+    def select(self):
         """
         Выбор данных из файла с применением фильтрации
         query содержит словарь, в котором ключ это поле для
@@ -53,15 +53,7 @@ class Connector:
         with open(self.__data_file, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
             f.close()
-        if not len(query):
-            return existing_data
-
-        data_from_file = []
-        for item in existing_data:
-            for key, value in query.items():
-                if item[key] == value:
-                    data_from_file.append(item)
-        return data_from_file
+        return existing_data
 
     def delete(self, query):
         """
